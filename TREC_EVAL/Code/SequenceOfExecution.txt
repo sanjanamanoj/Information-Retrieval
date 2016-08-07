@@ -1,0 +1,4 @@
+1. GetQrel.java --> Get the individual qrel assessment from Elastic search
+2. processQrel.java --> combine manual assessment of all teammates to give final qrel file
+3. SearchES.java --> to create the ranking file(uses BM25)
+4. trec.java -> displays the trec results for the qrel and ranking file
