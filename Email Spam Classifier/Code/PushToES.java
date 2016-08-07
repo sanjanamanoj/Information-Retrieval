@@ -19,7 +19,13 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-public class PushToES 
+//This program is used to push the dataset to Elastic Search with fields
+// text: this is the actual text of the email
+// spam: the yes or no represents if it is spam or not
+// type: if it will be in the train or test set
+// docno: the name of the email
+
+public class PushToES
 {
 	public static int id =0;
 	public static int spamCount = 0;
@@ -40,11 +46,8 @@ public class PushToES
 		 spamInTrain =  (int) ( trainSize * 0.67);
 		 hamInTrain = trainSize - spamInTrain;
 		 readAllFiles("trec07p/data",client);
-//		 System.out.println(trainSize);
-//		 System.out.println(spamInTrain);
-//		 System.out.println(hamInTrain);
 	}
-	
+
 	public static void readSpamMap(String filename) throws IOException
 	{
 		BufferedReader br = new BufferedReader(new FileReader(filename));
@@ -58,21 +61,21 @@ public class PushToES
 			line= br.readLine();
 		}
 		System.out.println(spamMap.size());
-		br.close();		
-		
+		br.close();
+
 	}
-	
-	
+
+
 	public static void readAllFiles(String target_dir,Client client) throws IOException
 	{
-		File dir = new File(target_dir);      
+		File dir = new File(target_dir);
         File[] files = dir.listFiles();
-       	for (File file : files) 
+       	for (File file : files)
 		{
 			processFile(file , client);
 		}
 	}
-	
+
 	public static void  processFile(File file,Client client) throws IOException
 	{
 		id++;
@@ -98,7 +101,7 @@ public class PushToES
 		Elements html = doc.getElementsByTag("html");
 		//System.out.println(html.text());
 		String text = html.text();
-		
+
 		String l = text
 				 .replace(".", "")
 				 .replace(",", "")
@@ -129,12 +132,10 @@ public class PushToES
 				 .replace("+","")
 				 .replace("\t","")
 				 .replaceAll(" +", " ");
-		//System.out.println(l);
-		//System.exit(0);
-		//System.out.println("print:"+spamMap.get(file.getName()));
+
 		if(spamMap.get(file.getName()).equals("spam"))
 		{
-		//	System.out.println("yes");
+
 			spam ="yes";
 			if(spamCount<spamInTrain)
 			{
@@ -144,10 +145,10 @@ public class PushToES
 			else
 				type ="test";
 		}
-			
+
 		else
 		{
-			//System.out.println("no");
+
 			spam="no";
 			if(hamCount<hamInTrain)
 			{
@@ -157,8 +158,8 @@ public class PushToES
 			else
 				type ="test";
 		}
-			
-	 	
+
+
 	    XContentBuilder builder = XContentFactory.jsonBuilder()
 	    	    .startObject()
 	    	    	.field("docno",file.getName())
@@ -170,7 +171,7 @@ public class PushToES
                 .setSource(builder)
                 .execute()
                 .actionGet();
-		
+
 	}
 
 }

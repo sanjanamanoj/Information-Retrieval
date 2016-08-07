@@ -25,15 +25,19 @@ import org.elasticsearch.script.Script;
 import org.elasticsearch.script.ScriptService.ScriptType;
 import org.elasticsearch.search.SearchHit;
 
+// This program creates the test and train maps for a list of spam words given in "OfficialSpamWords.txt". It creates a HashMap for the spam words and dumps it in a file.
 
-
-public class Manual 
+public class Manual
 {
+
+  // List of spam words with a number assigned to eaxh word. So the test and train files use these numbers to represent the words
 	public static LinkedHashMap<String,Integer> spamMap = new LinkedHashMap<String,Integer>();
 	public static LinkedHashMap<String,LinkedHashMap<Integer,Integer>> trainFeatureMap = new LinkedHashMap<String,LinkedHashMap<Integer,Integer>>();
 	public static LinkedHashMap<String,LinkedHashMap<Integer,Integer>> testFeatureMap = new LinkedHashMap<String,LinkedHashMap<Integer,Integer>>();
+
+  //Used to determine if the given file is spam or not
 	public static HashMap<String,Integer> spamDeterminant = new HashMap<String,Integer>();
- 	
+
 	public static void main(String[] args) throws IOException
 	{
 		Settings settings = Settings.builder().build();
@@ -41,15 +45,15 @@ public class Manual
 				.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9300));
 		createSpamMap("OfficialSpamWords.txt");
 		System.out.println(spamMap.size());
-		
-		//dumpSpamMap();
+		dumpSpamMap();
 		query(client);
-		dumpFeatureMap("Part3/traindocs.txt",trainFeatureMap);
-		dumpFeatureMap("Part3/testdocs.txt",testFeatureMap);
-		
-		
+		dumpFeatureMap("Part1/traindocs.txt",trainFeatureMap);
+		dumpFeatureMap("Part1/testdocs.txt",testFeatureMap);
+
+
 	}
-	
+
+  // Dumps the feature map in the format required by the LIBLINEAR library
 	public static void dumpFeatureMap(String filename, LinkedHashMap<String,LinkedHashMap<Integer,Integer>> map) throws FileNotFoundException
 	{
 		System.out.println("Dumping feature map");
@@ -57,18 +61,18 @@ public class Manual
 		for(Entry<String,LinkedHashMap<Integer,Integer>> e: map.entrySet())
 		{
 			//pw.println(e.getKey());
-			pw.println(e.getKey()+" "+spamDeterminant.get(e.getKey())+" ");
-
-//			for(Entry<Integer,Integer> e1: e.getValue().entrySet())
-//			{
-//				pw.print(e1.getKey()+":"+e1.getValue()+" ");
-//			}
-//			//pw.print(spamDeterminant.get(e.getKey()));
-//			pw.println();
+			pw.println(spamDeterminant.get(e.getKey())+" ");
+			for(Entry<Integer,Integer> e1: e.getValue().entrySet())
+			{
+				pw.print(e1.getKey()+":"+e1.getValue()+" ");
+			}
+			pw.println();
 		}
 		pw.close();
 	}
-	
+
+
+
 	public static void dumpSpamMap() throws FileNotFoundException
 	{
 		System.out.println("dumping spam map");
@@ -79,7 +83,8 @@ public class Manual
 		}
 		pw.close();
 	}
-	
+
+
 	public static void createSpamMap(String filename) throws IOException
 	{
 		int count =1;
@@ -92,18 +97,18 @@ public class Manual
 				spamMap.put(line.toLowerCase().trim(),count);
 				count++;
 			}
-			
+
 			line = br.readLine();
 		}
-		br.close();	
-				
+		br.close();
+
 	}
-	
-	
-	public static void query(Client client) 
+
+
+	public static void query(Client client)
 	{
-		
-		
+
+
 		String[] a = {"text"};
 		for(Entry<String,Integer> e:spamMap.entrySet())
 		{
@@ -113,30 +118,28 @@ public class Manual
 			 params = new HashMap<String, Object>();
 		        params.put("term", e.getKey());
 		        params.put("field", "text");
-		        
+
 			 SearchResponse scrollResp = client.prepareSearch("spams")
 		                .setTypes("document")
 		                .setScroll(new TimeValue(120 * 60000))
 		                .setQuery(QueryBuilders.functionScoreQuery
-		                          (QueryBuilders.termQuery("text", e.getKey()), 
-		                            new ScriptScoreFunctionBuilder(new Script("getTF", 
+		                          (QueryBuilders.termQuery("text", e.getKey()),
+		                            new ScriptScoreFunctionBuilder(new Script("getTF",
 		                                    ScriptType.INDEXED, "groovy", params)))
-		                          .boostMode("replace"))	
+		                          .boostMode("replace"))
 		                .setFetchSource( null,a)
 		                .setExplain(true)
 		                .setSize(100)
 		                .execute()
 		                .actionGet();
 
-	 while (true) 
-	 {			 
-		// System.out.println("inside while");
-		 for (SearchHit hit : scrollResp.getHits().getHits()) 
-		 {				 
+	 while (true)
+	 {
+		 for (SearchHit hit : scrollResp.getHits().getHits())
+		 {
 			 String type = (String)hit.getSource().get("type");
 			 String docno =  (String) hit.getSource().get("docno");
-			 String label = (String)hit.getSource().get("spam");				 
-			// int id = (Integer) hit.getSource().get("id");				 
+			 String label = (String)hit.getSource().get("spam");
 			 int tf = (int) hit.getScore();
 			 if(label.equals("yes"))
 				 spamDeterminant.put(docno,1);
@@ -145,7 +148,7 @@ public class Manual
 			 if(type.equals("train"))
 			 {
 				 LinkedHashMap<Integer,Integer> temp = new LinkedHashMap<Integer,Integer>();
-				
+
 				 if(trainFeatureMap.containsKey(docno))
 				 {
 					 temp.putAll(trainFeatureMap.get(docno));
@@ -157,13 +160,13 @@ public class Manual
 					 temp.put(e.getValue(), tf);
 					 trainFeatureMap.put(docno,temp);
 				 }
-					 
-				 
+
+
 			 }
 			 else
 			 {
 				 LinkedHashMap<Integer,Integer> temp = new LinkedHashMap<Integer,Integer>();
-				
+
 				 if(testFeatureMap.containsKey(docno))
 				 {
 					 temp.putAll(testFeatureMap.get(docno));
@@ -175,9 +178,9 @@ public class Manual
 					 temp.put(e.getValue(), tf);
 					 testFeatureMap.put(docno,temp);
 				 }
-					 
+
 			 }
-			
+
 		 }
 
 		 try{
@@ -190,22 +193,21 @@ public class Manual
 		 {
 		 	continue;
 		 }
-		 	
+
 		 //Break condition: No hits are returned
-		 if (scrollResp.getHits().getHits().length == 0) 
+		 if (scrollResp.getHits().getHits().length == 0)
 		 {
-			 //System.out.println("no hits");
 			 break;
 		 }
 
 	 }
-	
-	
 
- 
-			
-}	
+
+
+
+
 }
-		
+}
+
 
 }

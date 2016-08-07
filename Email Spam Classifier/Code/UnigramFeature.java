@@ -38,18 +38,18 @@ public class UnigramFeature
 	public static LinkedHashMap<String,LinkedHashMap<Integer,Integer>> trainFeatureMap = new LinkedHashMap<String,LinkedHashMap<Integer,Integer>>();
 	public static LinkedHashMap<String,LinkedHashMap<Integer,Integer>> testFeatureMap = new LinkedHashMap<String,LinkedHashMap<Integer,Integer>>();
 	public static HashMap<String,Integer> spamDeterminant = new HashMap<String,Integer>();
-	
+
 	public static void main(String[] args) throws IOException
 	{
 		loadDictionary("dictionary.txt");
 		getUnigramMap();
-	//	printMap();
+		printMap();
 		printFeatureMap(trainFeatureMap,"Part2/UnigramTrainDocs.txt");
 		printFeatureMap(testFeatureMap,"Part2/UnigramTestDocs.txt");
-		//printUnigramMap();
-		
+
+
 	}
-	
+
 	public static void loadDictionary(String filename) throws IOException
 	{
 		BufferedReader br = new BufferedReader(new FileReader(filename));
@@ -61,7 +61,7 @@ public class UnigramFeature
 		}
 		br.close();
 	}
-	
+
 	public static void printMap() throws FileNotFoundException
 	{
 		PrintWriter pw = new PrintWriter("Part2/unigramMap.txt");
@@ -71,6 +71,7 @@ public class UnigramFeature
 		}
 		pw.close();
 	}
+
 	public static void printFeatureMap(LinkedHashMap<String,LinkedHashMap<Integer,Integer>>map,String filename) throws FileNotFoundException
 	{
 		System.out.println("printing map");
@@ -78,19 +79,19 @@ public class UnigramFeature
 		for(Entry<String,LinkedHashMap<Integer,Integer>> e : map.entrySet())
 		{
 			pw.println(e.getKey());
-//			LinkedHashMap<Integer, Integer> hmap = new LinkedHashMap<Integer, Integer>();
-//			hmap.putAll(sortMap(e.getValue()));
-//			for(Entry<Integer,Integer> e1 : hmap.entrySet())
-//			{
-//				pw.print(e1.getKey()+":"+e1.getValue()+" ");
-//			}
-//			pw.println();
+			LinkedHashMap<Integer, Integer> hmap = new LinkedHashMap<Integer, Integer>();
+			hmap.putAll(sortMap(e.getValue()));
+			for(Entry<Integer,Integer> e1 : hmap.entrySet())
+			{
+				pw.print(e1.getKey()+":"+e1.getValue()+" ");
+			}
+			pw.println();
 		}
 		pw.close();
 		System.out.println("done printing");
 	}
-	
-	
+
+
 	public static LinkedHashMap<Integer,Integer> sortMap(LinkedHashMap<Integer,Integer> map)
 	{
 
@@ -109,12 +110,12 @@ public class UnigramFeature
 	        {
 	            result.put( entry.getKey(), entry.getValue() );
 	        }
-	        
-	        
+
+
 		return result;
 	}
-	
-	
+
+
 	public static void getUnigramMap() throws UnknownHostException, FileNotFoundException
 	{
 		int count = 1;
@@ -122,7 +123,7 @@ public class UnigramFeature
 		Client client = TransportClient.builder().settings(settings).build()
 				.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("localhost"), 9300));
 		String[] a = {"text","docno"};
-		
+
 		SearchResponse scrollResp = client.prepareSearch("spams")
 				.setScroll(new TimeValue(120 * 60000))
 	            .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
@@ -130,33 +131,33 @@ public class UnigramFeature
 	            .setSize(1)
 				   .execute()
 				   .actionGet();
-		while (true) 
-		 {			 
-			 for (SearchHit hit : scrollResp.getHits().getHits()) 
-			 {				 
+		while (true)
+		 {
+			 for (SearchHit hit : scrollResp.getHits().getHits())
+			 {
 				 String text = (String) hit.getSource().get("text");
 				 String docno = (String) hit.getSource().get("docno");
 				 String type = (String) hit.getSource().get("type");
 				 String label = (String) hit.getSource().get("spam");
 				 String[] temp =text.split(" ");
-				 
+
 				 if(label.equals("yes"))
 					 spamDeterminant.put(docno,1);
 				 else
 					 spamDeterminant.put(docno,0);
-				 
+
 				 for(String s: temp)
 				 {
-					
+
 						 if(!words.containsKey(s.toLowerCase().trim()))
 						 {
 							 words.put(s.toLowerCase().trim(),count);
 							 count++;
 						 }
-					 
-					
+
+
 				 }
-				 
+
 				 if(type.equals("train"))
 				 {
 					 trainMap(temp,docno);
@@ -165,18 +166,18 @@ public class UnigramFeature
 				 {
 					 testMap(temp,docno);
 				 }
-				
+
 				 System.out.println(trainFeatureMap.size()+" "+testFeatureMap.size());
-			
+
 			 }
-			// 
+			//
 
 			 scrollResp = client.prepareSearchScroll(scrollResp.getScrollId())
 					 .setScroll(new TimeValue(120 * 60000))
 					 .execute()
 					 .actionGet();
 			 //Break condition: No hits are returned
-			 if (scrollResp.getHits().getHits().length == 0) 
+			 if (scrollResp.getHits().getHits().length == 0)
 			 {
 				 break;
 			 }
@@ -203,14 +204,14 @@ public class UnigramFeature
 						temp.put(words.get(s), 1);
 					}
 				}
-				
+
 			}
 			trainFeatureMap.put(docno,temp);
 		}
 		else
 		{
 			LinkedHashMap<Integer,Integer> temp = new LinkedHashMap<Integer,Integer>();
-			
+
 			for(String s:text)
 			{
 				if(words.containsKey(s))
@@ -224,13 +225,13 @@ public class UnigramFeature
 						temp.put(words.get(s), 1);
 					}
 				}
-				
+
 			}
 			trainFeatureMap.put(docno,temp);
 		}
 	 }
-	
-	 
+
+
 	 public static void testMap(String[] text,String docno)
 	 {
 		 if(testFeatureMap.containsKey(docno))
@@ -250,14 +251,14 @@ public class UnigramFeature
 							temp.put(words.get(s), 1);
 						}
 					}
-					
+
 				}
 				testFeatureMap.put(docno,temp);
 			}
 			else
 			{
 				LinkedHashMap<Integer,Integer> temp = new LinkedHashMap<Integer,Integer>();
-				
+
 				for(String s:text)
 				{
 					if(words.containsKey(s))
@@ -271,19 +272,11 @@ public class UnigramFeature
 							temp.put(words.get(s), 1);
 						}
 					}
-					
+
 				}
 				testFeatureMap.put(docno,temp);
 			}
 	 }
-//	public static void printUnigramMap() throws FileNotFoundException
-//	{
-//		PrintWriter pw = new PrintWriter("unigram.txt");
-//		for(String s:words)
-//		{
-//			pw.println(s);
-//		}
-//		
-//		pw.close();
-//	}
+
+
 }
